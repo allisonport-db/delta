@@ -11,7 +11,7 @@ jobs:
     if: ${{ github.event.issue.pull_request || github.event.pull_request }}
     runs-on: ubuntu-latest
     steps:
-      - uses: allisonport-db/github-project-automation-plus@a8cbe340e2daba9f6a7ba8e185658e7a342f3b3d
+      - uses: allisonport-db/github-project-automation-plus@main
         with:
           project: test github actions
           column: needs review
