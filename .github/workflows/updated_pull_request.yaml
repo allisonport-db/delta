@@ -8,7 +8,7 @@ on:
   
 jobs:
   automate-updated-pull-requests:
-    if: ${{ github.event.issue.pull_request }}
+    if: ${{ github.event.issue.pull_request || github.event.pull_request }}
     runs-on: ubuntu-latest
     steps:
       - uses: alex-page/github-project-automation-plus@v0.8.1
