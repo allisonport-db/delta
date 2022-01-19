@@ -16,4 +16,4 @@ jobs:
         with:
           project: oss-delta-issues
           column: Needs Review
-          repo-token: ${{ secrets.PROJECT_BOARD_AUTOMATION_TOKEN }}
+          repo-token: ${{ secrets.TEST_PR_AUTOMATION }}
