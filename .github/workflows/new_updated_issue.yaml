@@ -13,9 +13,7 @@ on:
 
 jobs:
   automate-new-updated-issues:
-    if: ${{ !github.event.issue.pull_request &&
-      !contains($eng_usernames, github.event.sender.login) &&
-      !contains($devrel_usernames, github.event.sender.login) }}
+    if: ${{ !github.event.issue.pull_request }}
     runs-on: ubuntu-latest
     steps:
       - name: Move to Needs Review (ENG)
