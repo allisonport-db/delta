@@ -585,9 +585,7 @@ abstract class MergeIntoSuiteBase
   }
 
   protected def errorContains(errMsg: String, str: String): Unit = {
-    val actual = errMsg.replaceAll("`", "").toLowerCase(Locale.ROOT)
-    val expected = str.replaceAll("`", "").toLowerCase(Locale.ROOT)
-    assert(actual.contains(expected))
+    assert(errMsg.toLowerCase(Locale.ROOT).contains(str.toLowerCase(Locale.ROOT)))
   }
 
   def errorNotContains(errMsg: String, str: String): Unit = {
@@ -2199,24 +2197,28 @@ abstract class MergeIntoSuiteBase
         source = (1, 10) :: (3, 30) :: Nil,
         target = (1, 1) :: Nil
       ) { case (sourceName, targetName) =>
-        executeMerge(
-          s"$targetName t",
-          s"$sourceName s",
-          "s.key = t.key",
-          insert(values = "(key, value) VALUES (s.key, s.value)"))
-
-        checkAnswer(sql(s"SELECT key, value FROM $targetName"),
-          Row(1, 1) :: Row(3, 30) :: Nil)
-
-        val metrics = spark.sql(s"DESCRIBE HISTORY $targetName LIMIT 1")
-          .select("operationMetrics")
-          .collect().head.getMap(0).asInstanceOf[Map[String, String]]
-        assert(metrics.contains("numTargetFilesRemoved"))
-        // If insert-only code path is not used, then the general code path will rewrite existing
-        // target files.
-        assert(metrics("numTargetFilesRemoved").toInt > 0)
+        insertOnlyMergeFeatureFlagOff(sourceName, targetName)
       }
     }
+  }
+
+  protected def insertOnlyMergeFeatureFlagOff(sourceName: String, targetName: String): Unit = {
+    executeMerge(
+      tgt = s"$targetName t",
+      src = s"$sourceName s",
+      cond = "s.key = t.key",
+      insert(values = "(key, value) VALUES (s.key, s.value)"))
+
+    checkAnswer(sql(s"SELECT key, value FROM $targetName"),
+      Row(1, 1) :: Row(3, 30) :: Nil)
+
+    val metrics = spark.sql(s"DESCRIBE HISTORY $targetName LIMIT 1")
+      .select("operationMetrics")
+      .collect().head.getMap(0).asInstanceOf[Map[String, String]]
+    assert(metrics.contains("numTargetFilesRemoved"))
+    // If insert-only code path is not used, then the general code path will rewrite existing
+    // target files.
+    assert(metrics("numTargetFilesRemoved").toInt > 0)
   }
 
   test("insert only merge - multiple matches when feature flag off") {
@@ -2277,20 +2279,19 @@ abstract class MergeIntoSuiteBase
             .withColumn("part2", 'id % 3)
             .createOrReplaceTempView("source")
           // execute merge without repartition
-          executeMerge(
-            tgt = s"delta.`$tgt1` as t",
-            src = "source src",
-            cond = cond,
-            clauses = clauses: _*)
-
-          // execute merge with repartition
-          withSQLConf(DeltaSQLConf.MERGE_REPARTITION_BEFORE_WRITE.key -> "true") {
+          withSQLConf(DeltaSQLConf.MERGE_REPARTITION_BEFORE_WRITE.key -> "false") {
             executeMerge(
-              tgt = s"delta.`$tgt2` as t",
+              tgt = s"delta.`$tgt1` as t",
               src = "source src",
               cond = cond,
               clauses = clauses: _*)
           }
+          // execute merge with repartition - default behavior
+          executeMerge(
+            tgt = s"delta.`$tgt2` as t",
+            src = "source src",
+            cond = cond,
+            clauses = clauses: _*)
           checkAnswer(
             io.delta.tables.DeltaTable.forPath(tgt2).toDF,
             io.delta.tables.DeltaTable.forPath(tgt1).toDF
@@ -4605,18 +4606,23 @@ abstract class MergeIntoSuiteBase
 
   protected def testInvalidTempViews(name: String)(
       text: String,
-      expectedErrorForSQLTempView: String,
-      expectedErrorForDataSetTempView: String): Unit = {
+      expectedErrorMsgForSQLTempView: String = null,
+      expectedErrorMsgForDataSetTempView: String = null,
+      expectedErrorClassForSQLTempView: String = null,
+      expectedErrorClassForDataSetTempView: String = null): Unit = {
     testWithTempView(s"test merge on temp view - $name") { isSQLTempView =>
       withTable("tab") {
         withTempView("src") {
           Seq((0, 3), (1, 2)).toDF("key", "value").write.format("delta").saveAsTable("tab")
           createTempViewFromSelect(text, isSQLTempView)
           sql("CREATE TEMP VIEW src AS SELECT * FROM VALUES (1, 2), (3, 4) AS t(a, b)")
-          val expectedError = if (isSQLTempView) {
-            expectedErrorForSQLTempView
-          } else expectedErrorForDataSetTempView
-          if (expectedError != null) {
+          val doesExpectError = if (isSQLTempView) {
+            expectedErrorMsgForSQLTempView != null || expectedErrorClassForSQLTempView != null
+          } else {
+            expectedErrorMsgForDataSetTempView != null ||
+              expectedErrorClassForDataSetTempView != null
+          }
+          if (doesExpectError) {
             val ex = intercept[AnalysisException] {
               executeMerge(
                 target = "v",
@@ -4625,7 +4631,13 @@ abstract class MergeIntoSuiteBase
                 update = "v.value = src.b + 1",
                 insert = "(v.key, v.value) VALUES (src.a, src.b)")
             }
-            assert(ex.getMessage.contains(expectedError))
+            testErrorMessageAndClass(
+              isSQLTempView,
+              ex,
+              expectedErrorMsgForSQLTempView,
+              expectedErrorMsgForDataSetTempView,
+              expectedErrorClassForSQLTempView,
+              expectedErrorClassForDataSetTempView)
           } else {
             executeMerge(
               target = "v",
@@ -4642,16 +4654,16 @@ abstract class MergeIntoSuiteBase
 
   testInvalidTempViews("subset cols")(
     text = "SELECT key FROM tab",
-    expectedErrorForSQLTempView = "cannot resolve",
-    expectedErrorForDataSetTempView = "cannot resolve"
+    expectedErrorMsgForSQLTempView = "cannot resolve",
+    expectedErrorMsgForDataSetTempView = "cannot resolve"
   )
 
   testInvalidTempViews("superset cols")(
     text = "SELECT key, value, 1 FROM tab",
     // The analyzer can't tell whether the table originally had the extra column or not.
-    expectedErrorForSQLTempView =
+    expectedErrorMsgForSQLTempView =
       "The schema of your Delta table has changed in an incompatible way",
-    expectedErrorForDataSetTempView =
+    expectedErrorMsgForDataSetTempView =
       "The schema of your Delta table has changed in an incompatible way"
   )
 

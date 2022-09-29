@@ -359,7 +359,9 @@ trait DescribeDeltaHistorySuiteBase
       log.ensureLogDirectoryExist()
       log.store.write(
         FileNames.deltaFile(log.logPath, 0),
-        Iterator(Metadata(schemaString = spark.range(1).schema.json).json, Protocol(1, 1).json))
+        Iterator(Metadata(schemaString = spark.range(1).schema.json).json, Protocol(1, 1).json),
+        overwrite = false,
+        log.newDeltaHadoopConf())
       log.update()
       log.upgradeProtocol()
       checkLastOperation(
@@ -459,6 +461,18 @@ trait DescribeDeltaHistorySuiteBase
       Seq($"operation", $"operationParameters.mode", $"operationParameters.predicate"))
   }
 
+  testWithFlag("operations - delete with predicate") {
+    val tempDir = Utils.createTempDir().toString
+    Seq((1, "a"), (2, "3")).toDF("id", "data").write.format("delta").partitionBy("id").save(tempDir)
+    val deltaLog = DeltaLog.forTable(spark, tempDir)
+    val deltaTable = io.delta.tables.DeltaTable.forPath(spark, deltaLog.dataPath.toString)
+    deltaTable.delete("id = 1")
+
+    checkLastOperation(
+      tempDir,
+      Seq("DELETE", """["(id = 1)"]"""),
+      Seq($"operation", $"operationParameters.predicate"))
+  }
 
   testWithFlag("old and new writers") {
     val tempDir = Utils.createTempDir().toString
@@ -954,7 +968,8 @@ trait DescribeDeltaHistorySuiteBase
         StructField("isBlindAppend", BooleanType, nullable = true),
         StructField("operationMetrics",
           MapType(StringType, StringType, valueContainsNull = true), nullable = true),
-        StructField("userMetadata", StringType, nullable = true)))
+        StructField("userMetadata", StringType, nullable = true),
+        StructField("engineInfo", StringType, nullable = true)))
 
       // Test schema from [[io.delta.tables.DeltaTable.history]] api
       val df1 = deltaTable.history(1)
