@@ -29,6 +29,8 @@ lazy val commonSettings = Seq(
   Test / javaOptions += "-Xmx1024m",
 )
 
+// test
+
 // TODO javastyle checkstyle tests
 // TODO unidoc/javadoc settings
 
