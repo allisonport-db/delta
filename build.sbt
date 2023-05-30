@@ -25,6 +25,8 @@ val all_scala_versions = Seq(scala212, scala213)
 
 scalaVersion := default_scala_version
 
+// test
+
 // crossScalaVersions must be set to Nil on the root project
 crossScalaVersions := Nil
 
