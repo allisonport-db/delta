@@ -31,7 +31,7 @@ jobs:
         run: |
           cd kernel && build/sbt kernelApi/doc
           mkdir -p docs/snapshot/kernel-api/api/java
-          cp -r kernel-api/target/api/ docs/snapshot/kernelApi/api/java
+          cp -r kernel-api/target/api/ docs/snapshot/kernel-api/api/java
 
   # Single deploy job since we're just deploying
   deploy:
