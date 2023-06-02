@@ -29,12 +29,13 @@ jobs:
           java-version: "8"
       - name: Generate docs
         run: |
-          cd kernel && build/sbt kernelApi/docs
+          cd kernel && build/sbt kernelApi/doc
           mkdir -p docs/snapshot/kernel-api/api/java
           cp -r kernel-api/target/api/ docs/snapshot/kernelApi/api/java
 
   # Single deploy job since we're just deploying
   deploy:
+    needs: generate_docs
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
