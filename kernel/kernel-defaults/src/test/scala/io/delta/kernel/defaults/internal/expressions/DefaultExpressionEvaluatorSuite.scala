@@ -261,6 +261,16 @@ class DefaultExpressionEvaluatorSuite extends AnyFunSuite with ExpressionSuiteBa
     val actOutputVector1 = evaluator(
       schema, coalesceEpxr1, LongType.LONG).eval(batch)
     checkVectors(expOutputVector1, actOutputVector1, LongType.LONG)
+
+
+    val coalesceEpxr3 = new ScalarExpression(
+      "COALESCE",
+      util.Arrays.asList(
+        new Column("col1"), new Column("col2"), new Column("col3")))
+    val expOutputVector3 = longVector(Seq[LongJ](1, 2, 3, null))
+    val actOutputVector3 = evaluator(
+      schema, coalesceEpxr3, LongType.LONG).eval(batch)
+    checkVectors(actOutputVector3, expOutputVector3, LongType.LONG)
   }
 
   test("evaluate expression: coalesce integer") {
@@ -281,6 +291,15 @@ class DefaultExpressionEvaluatorSuite extends AnyFunSuite with ExpressionSuiteBa
     val actOutputVector1 = evaluator(
       schema, coalesceIntEpxr1, IntegerType.INTEGER).eval(batch)
     checkVectors(expOutputVector1, actOutputVector1, IntegerType.INTEGER)
+
+    val coalesceEpxr3 = new ScalarExpression(
+      "COALESCE",
+      util.Arrays.asList(
+        new Column("col1"), new Column("col2"), new Column("col3")))
+    val expOutputVector3 = integerVector(Seq[IntegerJ](1, 2, 3, null))
+    val actOutputVector3 = evaluator(
+      schema, coalesceEpxr3, IntegerType.INTEGER).eval(batch)
+    checkVectors(actOutputVector3, expOutputVector3, IntegerType.INTEGER)
   }
 
   test("evaluate expression: coalesce") {
