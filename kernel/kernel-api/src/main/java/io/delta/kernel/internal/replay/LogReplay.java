@@ -199,6 +199,20 @@ public class LogReplay {
             );
         }
 
+        // TODO put this behind a conf?
+        Optional<VersionStats> versionStatsOpt = ChecksumReader.getVersionStats(
+            logSegment.logPath,snapshotVersion, engine);
+        if (versionStatsOpt.isPresent()) {
+            VersionStats versionStats = versionStatsOpt.get();
+            if (versionStats.getMetadata() != null && versionStats.getProtocol() != null) {
+                // TODO log that we found the protocol/metadata in CRC
+                return new Tuple2<>(
+                    versionStats.getProtocol(),
+                    versionStats.getMetadata()
+                );
+            }
+        }
+
         Protocol protocol = null;
         Metadata metadata = null;
 
