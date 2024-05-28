@@ -133,8 +133,16 @@ object TestRow {
         case _: sparktypes.BinaryType => obj.asInstanceOf[Array[Byte]]
         case _: sparktypes.DecimalType => obj.asInstanceOf[java.math.BigDecimal]
         case arrayType: sparktypes.ArrayType =>
-          obj.asInstanceOf[Seq[Any]]
-            .map(decodeCellValue(arrayType.elementType, _))
+          // todo match
+          if (obj.isInstanceOf[Seq[Any]]) {
+            obj.asInstanceOf[Seq[Any]]
+              .map(decodeCellValue(arrayType.elementType, _))
+          } else if (obj.isInstanceOf[scala.collection.mutable.ArraySeq[Any]]) {
+            obj.asInstanceOf[scala.collection.mutable.ArraySeq[Any]]
+              .map(decodeCellValue(arrayType.elementType, _)).toSeq
+          } else {
+            throw new RuntimeException("Unexpected type")
+          }
         case mapType: sparktypes.MapType => obj.asInstanceOf[Map[Any, Any]].map {
           case (k, v) =>
             decodeCellValue(mapType.keyType, k) -> decodeCellValue(mapType.valueType, v)
