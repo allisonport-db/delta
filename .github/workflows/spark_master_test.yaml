@@ -1,4 +1,4 @@
-name: "Delta Spark Master"
+name: "[NON-BLOCKING] Delta Spark Master"
 on: [push, pull_request]
 jobs:
   test:
