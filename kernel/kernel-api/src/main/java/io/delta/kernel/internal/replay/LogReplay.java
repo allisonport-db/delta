@@ -27,6 +27,7 @@ import io.delta.kernel.internal.TableFeatures;
 import io.delta.kernel.internal.actions.*;
 import io.delta.kernel.internal.checkpoints.SidecarFile;
 import io.delta.kernel.internal.fs.Path;
+import io.delta.kernel.internal.metrics.SnapshotMetrics;
 import io.delta.kernel.internal.snapshot.LogSegment;
 import io.delta.kernel.internal.snapshot.SnapshotHint;
 import io.delta.kernel.internal.util.Tuple2;
@@ -116,12 +117,15 @@ public class LogReplay {
       long snapshotVersion,
       Engine engine,
       LogSegment logSegment,
-      Optional<SnapshotHint> snapshotHint) {
+      Optional<SnapshotHint> snapshotHint,
+      SnapshotMetrics snapshotMetrics) {
     assertLogFilesBelongToTable(logPath, logSegment.allLogFilesUnsorted());
 
     this.dataPath = dataPath;
     this.logSegment = logSegment;
-    this.protocolAndMetadata = loadTableProtocolAndMetadata(engine, snapshotHint, snapshotVersion);
+    this.protocolAndMetadata =
+        snapshotMetrics.loadProtocolAndMetadataDuration.time(
+            () -> loadTableProtocolAndMetadata(engine, snapshotHint, snapshotVersion));
   }
 
   /////////////////
@@ -138,6 +142,10 @@ public class LogReplay {
 
   public Optional<Long> getLatestTransactionIdentifier(Engine engine, String applicationId) {
     return loadLatestTransactionVersion(engine, applicationId);
+  }
+
+  public long getVersion() {
+    return logSegment.version;
   }
 
   /**
