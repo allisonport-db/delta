@@ -36,7 +36,9 @@ public class TransactionStateRow extends GenericRow {
           .add(
               "configuration",
               new MapType(StringType.STRING, StringType.STRING, false /* valueContainsNull */))
-          .add("tablePath", StringType.STRING);
+          .add("tablePath", StringType.STRING)
+          .add("clusteringColumns",
+              new ArrayType(StringType.STRING, false /* containsNull */));
 
   private static final Map<String, Integer> COL_NAME_TO_ORDINAL =
       IntStream.range(0, SCHEMA.length())
@@ -49,6 +51,9 @@ public class TransactionStateRow extends GenericRow {
     valueMap.put(COL_NAME_TO_ORDINAL.get("partitionColumns"), metadata.getPartitionColumns());
     valueMap.put(COL_NAME_TO_ORDINAL.get("configuration"), metadata.getConfigurationMapValue());
     valueMap.put(COL_NAME_TO_ORDINAL.get("tablePath"), tablePath);
+    // Populate an empty list until we add support for the clustering table feature
+    valueMap.put(COL_NAME_TO_ORDINAL.get("clusteringColumns"),
+        VectorUtils.stringArrayValue(Collections.emptyList()));
     return new TransactionStateRow(valueMap);
   }
 
@@ -114,5 +119,13 @@ public class TransactionStateRow extends GenericRow {
    */
   public static String getTablePath(Row transactionState) {
     return transactionState.getString(COL_NAME_TO_ORDINAL.get("tablePath"));
+  }
+
+  /**
+   * todo
+   */
+  public static List<String> getClusteringColumns(Row transactionState) {
+    return VectorUtils.toJavaList(
+        transactionState.getArray(COL_NAME_TO_ORDINAL.get("clusteringColumns")));
   }
 }
