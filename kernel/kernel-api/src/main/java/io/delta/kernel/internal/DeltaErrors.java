@@ -365,6 +365,14 @@ public final class DeltaErrors {
             + " but 'domainMetadata' is unsupported");
   }
 
+  public static KernelException enablingIcebergWriterCompatV1OnExistingTable(String key) {
+    return new KernelException(
+        String.format(
+            "Cannot enable %s on an existing table. "
+                + "Enablement is only supported upon table creation.",
+            key));
+  }
+
   public static KernelException icebergWriterCompatV1IncompatibleTableFeatures(
       Set<TableFeature> incompatibleFeatures) {
     return new KernelException(
