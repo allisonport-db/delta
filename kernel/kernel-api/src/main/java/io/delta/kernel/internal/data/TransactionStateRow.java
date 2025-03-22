@@ -25,6 +25,7 @@ import io.delta.kernel.internal.actions.Metadata;
 import io.delta.kernel.internal.types.DataTypeJsonSerDe;
 import io.delta.kernel.internal.util.VectorUtils;
 import io.delta.kernel.types.*;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,14 +40,16 @@ public class TransactionStateRow extends GenericRow {
           .add(
               "configuration",
               new MapType(StringType.STRING, StringType.STRING, false /* valueContainsNull */))
-          .add("tablePath", StringType.STRING);
+          .add("tablePath", StringType.STRING)
+          .add("clusteringColumns", new ArrayType(StringType.STRING, false /* containsNull */))
+          .add("maxRetries", IntegerType.INTEGER);
 
   private static final Map<String, Integer> COL_NAME_TO_ORDINAL =
       IntStream.range(0, SCHEMA.length())
           .boxed()
           .collect(toMap(i -> SCHEMA.at(i).getName(), i -> i));
 
-  public static TransactionStateRow of(Metadata metadata, String tablePath) {
+  public static TransactionStateRow of(Metadata metadata, String tablePath, int maxRetries) {
     HashMap<Integer, Object> valueMap = new HashMap<>();
     valueMap.put(COL_NAME_TO_ORDINAL.get("logicalSchemaString"), metadata.getSchemaString());
     valueMap.put(
@@ -54,6 +57,11 @@ public class TransactionStateRow extends GenericRow {
     valueMap.put(COL_NAME_TO_ORDINAL.get("partitionColumns"), metadata.getPartitionColumns());
     valueMap.put(COL_NAME_TO_ORDINAL.get("configuration"), metadata.getConfigurationMapValue());
     valueMap.put(COL_NAME_TO_ORDINAL.get("tablePath"), tablePath);
+    // Populate an empty list until we add support for the clustering table feature
+    valueMap.put(
+        COL_NAME_TO_ORDINAL.get("clusteringColumns"),
+        VectorUtils.buildArrayValue(Collections.emptyList(), StringType.STRING));
+    valueMap.put(COL_NAME_TO_ORDINAL.get("maxRetries"), maxRetries);
     return new TransactionStateRow(valueMap);
   }
 
@@ -132,5 +140,16 @@ public class TransactionStateRow extends GenericRow {
    */
   public static String getTablePath(Row transactionState) {
     return transactionState.getString(COL_NAME_TO_ORDINAL.get("tablePath"));
+  }
+
+  /** TODO docs */
+  public static List<String> getClusteringColumns(Row transactionState) {
+    return VectorUtils.toJavaList(
+        transactionState.getArray(COL_NAME_TO_ORDINAL.get("clusteringColumns")));
+  }
+
+  /** TODO docs */
+  public static int getMaxRetries(Row transactionState) {
+    return transactionState.getInt(COL_NAME_TO_ORDINAL.get("maxRetries"));
   }
 }
