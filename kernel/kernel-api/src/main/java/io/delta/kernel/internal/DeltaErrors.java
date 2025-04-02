@@ -377,7 +377,11 @@ public final class DeltaErrors {
   }
 
   public static KernelException enablingIcebergWriterCompatV1OnExistingTable(String key) {
-    return new KernelException(String.format("Cannot enable %s on an existing table. " + "Enablement is only supported upon table creation.", key));
+    return new KernelException(
+        String.format(
+            "Cannot enable %s on an existing table. "
+                + "Enablement is only supported upon table creation.",
+            key));
   }
 
   public static KernelException cannotModifyAppendOnlyTable(String tablePath) {

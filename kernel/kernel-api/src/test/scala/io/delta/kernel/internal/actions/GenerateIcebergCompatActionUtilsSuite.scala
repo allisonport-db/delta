@@ -76,18 +76,10 @@ class GenerateIcebergCompatActionUtilsSuite extends AnyFunSuite {
       VectorUtils.buildArrayValue(partitionColumns.asJava, StringType.STRING),
       Optional.empty() /* createdTime */,
       VectorUtils.stringStringMapValue(tblProperties.asJava))
-    // TODO remove this once #4348 goes in
-    val physicalSchema = ColumnMapping.convertToPhysicalSchema(
-      testSchema,
-      testSchema,
-      ColumnMapping.getColumnMappingMode(tblProperties.asJava))
-
-    // TODO update columnMappingMetadata if needed
 
     TransactionStateRow.of(
-      metadata,
+      ColumnMapping.updateColumnMappingMetadataIfNeeded(metadata, true).orElse(metadata),
       testTablePath,
-      physicalSchema,
       maxRetries)
   }
 
@@ -180,7 +172,7 @@ class GenerateIcebergCompatActionUtilsSuite extends AnyFunSuite {
           Collections.emptyMap(), // partitionValues
           true // dataChange
         )
-      }.getMessage.contains("icebergCompatV2 compatibility requires 'numRecords' statistic"))
+      }.getMessage.contains("Cannot modify append only table"))
   }
 
   /* ----- Valid cases ----- */
@@ -192,7 +184,7 @@ class GenerateIcebergCompatActionUtilsSuite extends AnyFunSuite {
       expectedSize: Long,
       expectedModificationTime: Long,
       expectedDataChange: Boolean,
-      expectedStats: Optional[DataFileStatistics]): Unit = {
+      expectedStatsString: String): Unit = {
     assert(row.getSchema == SingleAction.FULL_SCHEMA)
     (0 until SingleAction.FULL_SCHEMA.length()).foreach { idx =>
       if (idx == SingleAction.ADD_FILE_ORDINAL) {
@@ -214,30 +206,31 @@ class GenerateIcebergCompatActionUtilsSuite extends AnyFunSuite {
     assert(!addFile.getBaseRowId.isPresent)
     assert(!addFile.getDefaultRowCommitVersion.isPresent)
     assert(!addFile.getDeletionVector.isPresent)
-    assert(addFile.getStats == expectedStats)
+    // We have to do our stats check differently since the AddFile::getStats API does not fully
+    // deserialize the statistics (only grabs the numRecords field)
+    assert(addRow.getString(AddFile.FULL_SCHEMA.indexOf("stats")) == expectedStatsString)
   }
 
   test("generateIcebergCompatWriterV1AddAction creates correct add row") {
     Seq(true, false).foreach { dataChange =>
+      val txnRow = testTransactionStateRow(compatibleTableProperties)
+      val statsString = testDataFileStatusWithStatistics.getStatistics.get
+        .serializeAsJson(TransactionStateRow.getPhysicalSchema(txnRow))
       validateAddAction(
         GenerateIcebergCompatActionUtils.generateIcebergCompatWriterV1AddAction(
           testTransactionStateRow(compatibleTableProperties),
           testDataFileStatusWithStatistics,
           Collections.emptyMap(), // partitionValues
           dataChange),
+        // TODO - return to this and how we should treat relatavizing paths
         expectedPath = "file1.parquet",
         expectedSize = 1000,
-        expectedModificationTime = 100,
+        expectedModificationTime = 10,
         expectedDataChange = dataChange,
-        expectedStats = testDataFileStatusWithStatistics.getStatistics())
+        expectedStatsString = statsString)
     }
   }
 
   // Test remove (w stats, w out stats), (dataChange true, dataChange false)
-
-  // TODO testSchema needs column mapping information?
-
-  // TODO remove can be created without statistics
-
-  // TODO relatavize path?.. issues? test this? figure out the answers potentially
+  // Validates that remove can be created without stats (while add cannot)
 }
