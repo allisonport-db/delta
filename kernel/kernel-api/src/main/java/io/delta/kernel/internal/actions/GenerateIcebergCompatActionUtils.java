@@ -16,21 +16,32 @@
 package io.delta.kernel.internal.actions;
 
 import static io.delta.kernel.internal.data.TransactionStateRow.*;
+import static io.delta.kernel.internal.util.InternalUtils.relativizePath;
+import static io.delta.kernel.internal.util.PartitionUtils.serializePartitionMap;
 import static io.delta.kernel.internal.util.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
+import io.delta.kernel.data.MapValue;
 import io.delta.kernel.data.Row;
 import io.delta.kernel.expressions.Literal;
 import io.delta.kernel.internal.DeltaErrors;
 import io.delta.kernel.internal.TableConfig;
+import io.delta.kernel.internal.data.GenericRow;
 import io.delta.kernel.internal.data.TransactionStateRow;
 import io.delta.kernel.internal.fs.Path;
 import io.delta.kernel.internal.icebergcompat.IcebergCompatV2MetadataValidatorAndUpdater;
+import io.delta.kernel.statistics.DataFileStatistics;
+import io.delta.kernel.types.StructType;
 import io.delta.kernel.utils.DataFileStatus;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /** TODO docs (what is okay to say here?) */
 public final class GenerateIcebergCompatActionUtils {
+
+  // TODO reorg private vs public methods
 
   /**
    * Validates that table feature `icebergWriterCompatV1` is enabled. We restrict usage of these
@@ -41,6 +52,7 @@ public final class GenerateIcebergCompatActionUtils {
   private static void validateIcebergWriterCompatV1Enabled(Map<String, String> config) {
     if (!TableConfig.ICEBERG_WRITER_COMPAT_V1_ENABLED.fromMetadata(config)) {
       throw new UnsupportedOperationException(
+          // TODO use the key here
           "APIs within GenerateIcebergCompatActionUtils are only supported on tables with"
               + " 'delta.enableIcebergWriterCompatV1' set to true");
     }
@@ -61,7 +73,6 @@ public final class GenerateIcebergCompatActionUtils {
     }
   }
 
-  // TODO is there any future reason we would need an `engine` arg?
   // TODO docs
   public static Row generateIcebergCompatWriterV1AddAction(
       Row transactionState,
@@ -126,7 +137,6 @@ public final class GenerateIcebergCompatActionUtils {
     if (dataChange && TableConfig.APPEND_ONLY_ENABLED.fromMetadata(config)) {
       throw DeltaErrors.cannotModifyAppendOnlyTable(getTablePath(transactionState));
     }
-    // TODO do this check at commit time as well
 
     /* --- Validate and update partitionValues ---- */
     // Currently we don't support partitioned tables; fail here
@@ -142,12 +152,60 @@ public final class GenerateIcebergCompatActionUtils {
     // This takes care of relativizing the file path and serializing the file statistics
     // (including converting from fieldId -> physical name)
     Row removeFileRow =
-        RemoveFile.convertDataFileStatus(
+        convertRemoveDataFileStatus(
             TransactionStateRow.getPhysicalSchema(transactionState),
             tableRoot,
             fileStatus,
             partitionValues,
             dataChange);
     return SingleAction.createRemoveFileSingleAction(removeFileRow);
+  }
+
+  //////////////////////////////////////////////////
+  // Private methods for creating RemoveFile rows //
+  //////////////////////////////////////////////////
+  // I've added these APIs here since they rely on the assumptions validated within
+  // GenerateIcebergCompatActionUtils such as icebergWriterCompatV1 is enabled --> rowTracking is
+  // disabled. Since these APIs are not valid without these assumptions, holding off on putting them
+  // within RemoveFile.java until we add full support for deletes (which will likely involve
+  // generating RemoveFiles directly from AddFiles anyway)
+
+  private static Row createRemoveFileRowWithExtendedFileMetadata(
+      String path,
+      long deletionTimestamp,
+      boolean dataChange,
+      MapValue partitionValues,
+      long size,
+      Optional<DataFileStatistics> stats,
+      StructType physicalSchema) {
+    Map<Integer, Object> fieldMap = new HashMap<>();
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("path"), requireNonNull(path));
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("deletionTimestamp"), deletionTimestamp);
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("dataChange"), dataChange);
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("extendedFileMetadata"), true);
+    fieldMap.put(
+        RemoveFile.FULL_SCHEMA.indexOf("partitionValues"), requireNonNull(partitionValues));
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("size"), size);
+    stats.ifPresent(
+        stat ->
+            fieldMap.put(
+                RemoveFile.FULL_SCHEMA.indexOf("stats"), stat.serializeAsJson(physicalSchema)));
+    return new GenericRow(RemoveFile.FULL_SCHEMA, fieldMap);
+  }
+
+  private static Row convertRemoveDataFileStatus(
+      StructType physicalSchema,
+      URI tableRoot,
+      DataFileStatus dataFileStatus,
+      Map<String, Literal> partitionValues,
+      boolean dataChange) {
+    return createRemoveFileRowWithExtendedFileMetadata(
+        relativizePath(new Path(dataFileStatus.getPath()), tableRoot).toUri().toString(),
+        dataFileStatus.getModificationTime(),
+        dataChange,
+        serializePartitionMap(partitionValues),
+        dataFileStatus.getSize(),
+        dataFileStatus.getStatistics(),
+        physicalSchema);
   }
 }

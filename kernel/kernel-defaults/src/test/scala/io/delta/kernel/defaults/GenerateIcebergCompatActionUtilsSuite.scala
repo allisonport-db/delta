@@ -19,6 +19,65 @@ class GenerateIcebergCompatActionUtilsSuite extends DeltaTableWriteSuiteBase {
   // column mapping writes (i.e. transformLogicalData doesn't support id mode) and need a way to
   // write column-mapping-id-based data
 
+  /*
+
+// We want to use generateIcebergCompatWriterV1AddAction to create the actions
+override def stageData(
+  state: Row,
+  partitionValues: Map[String, Literal],
+  data: Seq[FilteredColumnarBatch]): CloseableIterator[Row] = {
+  val physicalDataIter = Transaction.transformLogicalData(
+    defaultEngine,
+    state,
+    toCloseableIterator(data.toIterator.asJava),
+    partitionValues.asJava)
+
+  val writeContext = Transaction.getWriteContext(defaultEngine, state, partitionValues.asJava)
+
+  val writeResultIter = defaultEngine
+    .getParquetHandler
+    .writeParquetFiles(
+      writeContext.getTargetDirectory,
+      physicalDataIter,
+      writeContext.getStatisticsColumns)
+
+  writeResultIter.map { dfs =>
+    GenerateIcebergCompatActionUtils.generateIcebergCompatWriterV1AddAction(
+      state,
+      dfs,
+      Collections.emptyMap(),
+      true
+    )
+  }
+}
+
+  override def createTxn(
+    engine: Engine = defaultEngine,
+    tablePath: String,
+    isNewTable: Boolean = false,
+    schema: StructType = null,
+    partCols: Seq[String] = null,
+    tableProperties: Map[String, String] = null,
+    clock: Clock = () => System.currentTimeMillis,
+  ): Transaction = {
+
+    var txnBuilder = createWriteTxnBuilder(
+      TableImpl.forPath(engine, tablePath, clock))
+
+    if (isNewTable) {
+      txnBuilder = txnBuilder.withSchema(engine, schema)
+        .withPartitionColumns(engine, partCols.asJava)
+    }
+
+    if (tableProperties != null) {
+      txnBuilder = txnBuilder.withTableProperties(engine, tableProperties.asJava)
+    }
+
+    txnBuilder.withMaxRetries(0).build(engine)
+  }
+
+ */
+
   test("E2E test using these APIs") {
     withTempDirAndEngine { (tempDir, engine) =>
       // val tempDir = "/tmp/test-this-for-me"
@@ -148,4 +207,12 @@ class GenerateIcebergCompatActionUtilsSuite extends DeltaTableWriteSuiteBase {
        */
     }
   }
+
+  // Write with Kernel (using real parquet files)
+  // Read with Spark
+  // Check dataChange works correctly?
+
+  // test creating both adds & removes and committing them
+  // try reading them with Spark?....
+
 }
