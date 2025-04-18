@@ -32,6 +32,8 @@ public enum Operation {
   /** Recorded during streaming inserts. */
   STREAMING_UPDATE("STREAMING UPDATE"),
 
+  REPLACE_TABLE("Replace Table"),
+
   /** For any operation that doesn't fit the above categories. */
   MANUAL_UPDATE("Manual Update");
 
