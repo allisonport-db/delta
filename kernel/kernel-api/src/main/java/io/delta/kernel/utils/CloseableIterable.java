@@ -18,6 +18,7 @@ package io.delta.kernel.utils;
 import static io.delta.kernel.internal.util.Utils.toCloseableIterator;
 
 import io.delta.kernel.exceptions.KernelException;
+import io.delta.kernel.internal.util.Utils;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
@@ -110,6 +111,22 @@ public interface CloseableIterable<T> extends Iterable<T>, Closeable {
       @Override
       public CloseableIterator<T> iterator() {
         return EMPTY_ITERATOR;
+      }
+    };
+  }
+
+  default CloseableIterable<T> combine(CloseableIterable<T> other) {
+    CloseableIterable<T> delegate = this;
+    return new CloseableIterable<T>() {
+
+      @Override
+      public void close() throws IOException {
+        Utils.closeCloseables(delegate, other);
+      }
+
+      @Override
+      public CloseableIterator<T> iterator() {
+        return delegate.iterator().combine(other.iterator());
       }
     };
   }

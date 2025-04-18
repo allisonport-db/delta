@@ -209,6 +209,40 @@ public class AddFile extends RowBackedAction {
         toRowWithOverriddenValue("defaultRowCommitVersion", defaultRowCommitVersion));
   }
 
+  // Could take in dataChange and timestamp as args
+  public Row toRemoveFileRow() {
+    Map<Integer, Object> fieldMap = new HashMap<>();
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("path"), getPath());
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("deletionTimestamp"), System.currentTimeMillis());
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("dataChange"), true);
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("extendedFileMetadata"), true);
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("partitionValues"), getPartitionValues());
+    fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("size"), getSize());
+    getFieldIndexOpt("stats")
+        .ifPresent(
+            index -> {
+              if (!row.isNullAt(index)) {
+                fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("stats"), row.getString(index));
+              }
+            });
+    getTags().ifPresent(tags -> fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("tags"), tags));
+    if (!row.isNullAt(getFieldIndex("deletionVector"))) {
+      fieldMap.put(
+          RemoveFile.FULL_SCHEMA.indexOf("deletionVector"),
+          row.getStruct(getFieldIndex("deletionVector")));
+    }
+    getBaseRowId()
+        .ifPresent(
+            baseRowId -> fieldMap.put(RemoveFile.FULL_SCHEMA.indexOf("baseRowId"), baseRowId));
+    getDefaultRowCommitVersion()
+        .ifPresent(
+            defaultRowCommitVersion ->
+                fieldMap.put(
+                    RemoveFile.FULL_SCHEMA.indexOf("defaultRowCommitVersion"),
+                    defaultRowCommitVersion));
+    return new GenericRow(RemoveFile.FULL_SCHEMA, fieldMap);
+  }
+
   @Override
   public String toString() {
     // No specific ordering is guaranteed for partitionValues and tags in the returned string
