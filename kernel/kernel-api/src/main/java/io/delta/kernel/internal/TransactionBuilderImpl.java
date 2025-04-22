@@ -183,6 +183,9 @@ public class TransactionBuilderImpl implements TransactionBuilder {
 
   @Override
   public Transaction build(Engine engine) {
+    if (operation == Operation.REPLACE_TABLE) {
+      throw new UnsupportedOperationException("Replace Table is not supported");
+    }
     SnapshotImpl snapshot;
     try {
       snapshot = (SnapshotImpl) table.getLatestSnapshot(engine);
