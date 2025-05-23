@@ -558,16 +558,14 @@ lazy val sharing = (project in file("sharing"))
     name := "delta-sharing-spark",
     commonSettings,
     scalaStyleSettings,
-    releaseSettings,
+    // TODO re-enable release once 1.3.2 is available
+    skipReleaseSettings,
     crossSparkSettings(),
-    resolvers ++= Seq(
-      "Delta sharing client staging" at "https://oss.sonatype.org/content/repositories/iodelta-1221/"
-    ),
     Test / javaOptions ++= Seq("-ea"),
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-sql" % sparkVersion.value % "provided",
 
-      "io.delta" %% "delta-sharing-client" % "1.3.2",
+      "io.delta" %% "delta-sharing-client" % "1.2.4",
 
       // Test deps
       "org.scalatest" %% "scalatest" % scalaTestVersion % "test",
@@ -996,7 +994,9 @@ val createTargetClassesDir = taskKey[Unit]("create target classes dir")
 
 // Don't use these groups for any other projects
 lazy val sparkGroup = project
-  .aggregate(spark, contribs, storage, storageS3DynamoDB, hudi, sharing)
+  // TODO remove sharing for now since requires sharing client release for tests to pass, add back
+  //  once release is available
+  .aggregate(spark, contribs, storage, storageS3DynamoDB, hudi)
   .settings(
     // crossScalaVersions must be set to Nil on the aggregating project
     crossScalaVersions := Nil,

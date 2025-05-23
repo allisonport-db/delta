@@ -157,15 +157,10 @@ lazy val root = (project in file("."))
     run / fork := true,
     name := "hello-world",
     crossScalaVersions := Seq(scala213),
-    libraryDependencies ++= Seq(
-      "io.delta" %% getDeltaArtifactName.value % getDeltaVersion.value,
-      "org.apache.spark" %% "spark-sql" % lookupSparkVersion.apply(
-        getMajorMinor(getDeltaVersion.value)
-      ),
-      "org.apache.spark" %% "spark-hive" % lookupSparkVersion.apply(
-        getMajorMinor(getDeltaVersion.value)
-      )
-    ),
+    libraryDependencies ++= getLibraryDependencies(
+      getDeltaVersion.value,
+      getDeltaArtifactName.value,
+      getIcebergSparkRuntimeArtifactName.value),
     extraMavenRepo,
     resolvers ++= Seq(
       Resolver.mavenLocal,
