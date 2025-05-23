@@ -38,8 +38,6 @@ import Checkstyle._
 import Mima._
 import Unidoc._
 
-// TODO re-address all these changes independently + w.r.t. original PR for 4.0 preview
-
 // Scala versions
 val scala212 = "2.12.18"
 val scala213 = "2.13.13"
@@ -154,12 +152,19 @@ lazy val commonSettings = Seq(
   ) ++ {
     if (javaVersionInt >= 17) {
       Seq(  // For Java 17 +
-        // TODO address this overlap with java17TestSettings
-        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        // Copied from SparkBuild.scala to support Java 17 for unit tests (see apache/spark#34153)
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
         "--add-opens=java.base/java.net=ALL-UNNAMED",
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
         "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
-        "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED"
+        "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
+        "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
+        "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
+        "--add-opens=java.base/sun.net.util=ALL-UNNAMED"
       )
     } else {
       Seq.empty
@@ -171,23 +176,6 @@ lazy val commonSettings = Seq(
   // Unidoc settings: by default dont document any source file
   unidocSourceFilePatterns := Nil,
 )
-
-lazy val java17TestSettings =
-  Test / javaOptions ++= Seq(
-    // Copied from SparkBuild.scala to support Java 17 for unit tests (see apache/spark#34153)
-    "--add-opens=java.base/java.lang=ALL-UNNAMED",
-    "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
-    "--add-opens=java.base/java.io=ALL-UNNAMED",
-    "--add-opens=java.base/java.net=ALL-UNNAMED",
-    "--add-opens=java.base/java.nio=ALL-UNNAMED",
-    "--add-opens=java.base/java.util=ALL-UNNAMED",
-    "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
-    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
-    "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
-    "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
-    "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
-    "--add-opens=java.base/sun.net.util=ALL-UNNAMED"
-  )
 
 ////////////////////////////
 // START: Code Formatting //
@@ -236,7 +224,6 @@ def crossSparkSettings(): Seq[Setting[_]] = getSparkVersion() match {
     Compile / unmanagedSourceDirectories += (Compile / baseDirectory).value / "src" / "main" / "scala-spark-master",
     Test / unmanagedSourceDirectories += (Test / baseDirectory).value / "src" / "test" / "scala-spark-master",
     Antlr4 / antlr4Version := "4.13.1",
-    java17TestSettings,
     Test / javaOptions ++= Seq(
       "-Dlog4j.configurationFile=log4j2_spark_master.properties"
     ),
@@ -576,8 +563,7 @@ lazy val sharing = (project in file("sharing"))
       "org.apache.spark" %% "spark-core" % sparkVersion.value % "test" classifier "tests",
       "org.apache.spark" %% "spark-sql" % sparkVersion.value % "test" classifier "tests",
       "org.apache.spark" %% "spark-hive" % sparkVersion.value % "test" classifier "tests",
-    ),
-    java17TestSettings
+    )
   ).configureUnidoc()
 
 lazy val kernelApi = (project in file("kernel/kernel-api"))
@@ -702,7 +688,6 @@ lazy val kernelDefaults = (project in file("kernel/kernel-defaults"))
       "org.apache.spark" %% "spark-core" % defaultSparkVersion % "test" classifier "tests",
       "org.apache.spark" %% "spark-catalyst" % defaultSparkVersion % "test" classifier "tests",
     ),
-    java17TestSettings,
     javaCheckstyleSettings("dev/kernel-checkstyle.xml"),
       // Unidoc settings
     unidocSourceFilePatterns += SourceFilePattern("io/delta/kernel/"),

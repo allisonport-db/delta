@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-# TODO come back to this w.r.t. the changes in the original PR
 
 import os
 import subprocess
@@ -38,7 +37,7 @@ def run_scala_integration_tests(root_dir, version, test_name, extra_maven_repo, 
           % (str(version), scala_version))
     clear_artifact_cache()
     if use_local:
-        run_cmd(["build/sbt", "sparkGroup/publishM2"])
+        run_cmd(["build/sbt", "publishM2"])
 
     test_dir = path.join(root_dir, "examples", "scala")
     test_src_dir = path.join(test_dir, "src", "main", "scala", "example")
@@ -75,7 +74,7 @@ def run_python_integration_tests(root_dir, version, test_name, extra_maven_repo,
     print("\n\n##### Running Python tests on version %s #####" % str(version))
     clear_artifact_cache()
     if use_local:
-        run_cmd(["build/sbt", "sparkGroup/publishM2"])
+        run_cmd(["build/sbt", "publishM2"])
 
     test_dir = path.join(root_dir, path.join("examples", "python"))
     files_to_skip = {"using_with_pip.py", "missing_delta_storage_jar.py", "image_storage.py", "delta_connect.py"}
@@ -117,7 +116,7 @@ def test_missing_delta_storage_jar(root_dir, version, use_local):
 
     clear_artifact_cache()
 
-    run_cmd(["build/sbt", "sparkGroup/publishM2"])
+    run_cmd(["build/sbt", "publishM2"])
 
     print("Clearing delta-storage artifact")
     delete_if_exists(os.path.expanduser("~/.m2/repository/io/delta/delta-storage"))
