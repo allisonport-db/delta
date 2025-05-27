@@ -162,11 +162,7 @@ lazy val root = (project in file("."))
       getDeltaArtifactName.value,
       getIcebergSparkRuntimeArtifactName.value),
     extraMavenRepo,
-    resolvers ++= Seq(
-      Resolver.mavenLocal,
-      // TODO remove this once the Spark preview release has been finalized
-      "Apache Spark 4.0 (RC7) Staging" at "https://repository.apache.org/content/repositories/orgapachespark-1485/"
-    ),
+    resolvers += Resolver.mavenLocal,
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature"
