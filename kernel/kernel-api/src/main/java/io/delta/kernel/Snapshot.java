@@ -90,4 +90,6 @@ public interface Snapshot {
 
   /** @return a committer that owns and controls commits to this table */
   Committer getCommitter();
+
+  UpdateTableTransactionBuilder buildUpdateTableTransaction(String engineInfo, Operation operation);
 }

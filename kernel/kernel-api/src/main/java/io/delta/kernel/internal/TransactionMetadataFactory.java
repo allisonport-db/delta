@@ -207,6 +207,7 @@ public class TransactionMetadataFactory {
   private final Optional<SnapshotImpl> latestSnapshotOpt;
   private final boolean isCreateOrReplace;
   private final boolean isSchemaEvolution;
+  private final Optional<List<Column>> userProvidedClusteringColumns;
 
   /* Fields that are updated by helper methods when updating and validating the metadata */
   private Optional<Metadata> newMetadata;
@@ -234,12 +235,13 @@ public class TransactionMetadataFactory {
     this.latestSnapshotOpt = latestSnapshotOpt;
     this.isCreateOrReplace = isCreateOrReplace;
     this.isSchemaEvolution = isSchemaEvolution;
+    this.userProvidedClusteringColumns = userProvidedClusteringColumns;
     this.newMetadata = initialNewMetadata;
     this.newProtocol = initialNewProtocol;
 
     performProtocolUpgrades();
     performIcebergCompatUpgradesAndValidation();
-    updateColumnMappingMetadataAndResolveClusteringColumns(userProvidedClusteringColumns);
+    updateColumnMappingMetadataAndResolveClusteringColumns();
     updateRowTrackingMetadata();
     validateMetadataChangeAndApplyTypeWidening();
     this.finalOutput = new Output(newProtocol, newMetadata, resolvedNewClusteringColumns);
@@ -278,6 +280,11 @@ public class TransactionMetadataFactory {
         TableFeatures.extractFeaturePropertyOverrides(getEffectiveMetadata());
     if (newFeaturesAndMetadata._2.isPresent()) {
       newMetadata = newFeaturesAndMetadata._2;
+    }
+
+    if (resolvedNewClusteringColumns.isPresent()
+        && !getEffectiveProtocol().supportsFeature(TableFeatures.CLUSTERING_W_FEATURE)) {
+      newFeaturesAndMetadata._1.add(TableFeatures.CLUSTERING_W_FEATURE);
     }
 
     Optional<Tuple2<Protocol, Set<TableFeature>>> newProtocolAndFeatures =
@@ -355,8 +362,7 @@ public class TransactionMetadataFactory {
    * STEP 3: Update the METADATA with column mapping info if applicable, and resolve the provided
    * clustering columns using the updated metadata.
    */
-  private void updateColumnMappingMetadataAndResolveClusteringColumns(
-      Optional<List<Column>> userProvidedClusteringColumns) {
+  private void updateColumnMappingMetadataAndResolveClusteringColumns() {
     // We update the column mapping info here after all configuration changes are finished
     Optional<Metadata> columnMappingMetadata =
         ColumnMapping.updateColumnMappingMetadataIfNeeded(

@@ -139,7 +139,9 @@ public class TransactionBuilderImpl implements TransactionBuilder {
   @Override
   public TransactionBuilder withTableProperties(Engine engine, Map<String, String> properties) {
     this.tableProperties =
-        Optional.of(Collections.unmodifiableMap(TableConfig.validateDeltaProperties(properties)));
+        Optional.of(
+            Collections.unmodifiableMap(
+                TableConfig.validateAndNormalizeDeltaProperties(properties)));
     return this;
   }
 
@@ -262,18 +264,6 @@ public class TransactionBuilderImpl implements TransactionBuilder {
       tablePropertiesWithFeatureEnablement.put(
           TableFeatures.SET_TABLE_FEATURE_SUPPORTED_PREFIX
               + TableFeatures.DOMAIN_METADATA_W_FEATURE.featureName(),
-          "supported");
-    }
-    boolean clusteringEnabled =
-        !isCreateOrReplace
-            && latestSnapshot
-                .get()
-                .getProtocol()
-                .supportsFeature(TableFeatures.CLUSTERING_W_FEATURE);
-    if (inputLogicalClusteringColumns.isPresent() && !clusteringEnabled) {
-      tablePropertiesWithFeatureEnablement.put(
-          TableFeatures.SET_TABLE_FEATURE_SUPPORTED_PREFIX
-              + TableFeatures.CLUSTERING_W_FEATURE.featureName(),
           "supported");
     }
     if (tablePropertiesWithFeatureEnablement.size() > 0) {
