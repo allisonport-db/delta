@@ -674,6 +674,7 @@ lazy val kernelApi = (project in file("kernel/kernel-api"))
     javaCheckstyleSettings("dev/kernel-checkstyle.xml"),
     // Unidoc settings
     unidocSourceFilePatterns := Seq(SourceFilePattern("io/delta/kernel/")),
+    TestParallelization.settings,
   ).configureUnidoc(docTitle = "Delta Kernel")
 
 lazy val kernelDefaults = (project in file("kernel/kernel-defaults"))
@@ -718,8 +719,9 @@ lazy val kernelDefaults = (project in file("kernel/kernel-defaults"))
     ),
     javaCheckstyleSettings("dev/kernel-checkstyle.xml"),
       // Unidoc settings
-    unidocSourceFilePatterns += SourceFilePattern("io/delta/kernel/"),
-  ).configureUnidoc(docTitle = "Delta Kernel Defaults")
+        unidocSourceFilePatterns += SourceFilePattern("io/delta/kernel/"),
+    TestParallelization.settings,
+   ).configureUnidoc(docTitle = "Delta Kernel Defaults")
 
 
 lazy val sparkKernelDsv2 = (project in file("spark-kernel-dsv2"))

@@ -2,10 +2,16 @@ name: "Delta Kernel"
 on: [push, pull_request]
 jobs:
   test:
-    name: "DK"
+    name: "DK Shard ${{ matrix.shard }}"
     runs-on: ubuntu-24.04
     env:
       SCALA_VERSION: 2.12.18
+      NUM_SHARDS: 2
+      TEST_PARALLELISM_COUNT: 2
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
     steps:
       - uses: actions/checkout@v3
       - name: install java
@@ -15,7 +21,8 @@ jobs:
           java-version: "8"
       - name: Run tests
         run: |
-          python run-tests.py --group kernel --coverage
+          python run-tests.py --group kernel --coverage --shard ${{ matrix.shard }}
       - name: Run integration tests
+        if: ${{ matrix.shard == 0 }}
         run: |
           cd kernel/examples && python run-kernel-examples.py --use-local
