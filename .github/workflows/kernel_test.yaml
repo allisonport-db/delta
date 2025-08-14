@@ -6,6 +6,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       SCALA_VERSION: 2.12.18
+      TEST_PARALLELISM_COUNT: 2
     steps:
       - uses: actions/checkout@v3
       - name: install java
