@@ -7,7 +7,6 @@ jobs:
     env:
       SCALA_VERSION: 2.12.18
       NUM_SHARDS: 2
-      TEST_PARALLELISM_COUNT: 2
     strategy:
       fail-fast: false
       matrix:
