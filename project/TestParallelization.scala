@@ -373,7 +373,7 @@ object TestParallelization {
         groupIdx =>
           val forkOptions = forkOptionsTemplate.withRunJVMOptions(
             runJVMOptions = forkOptionsTemplate.runJVMOptions ++
-                Seq(s"-Djava.io.tmpdir=$baseDir/target/tmp/$groupIdx")
+                Seq(s"-Djava.io.tmpdir=$baseDir/target/tmp/shard-$shardId/group-$groupIdx")
           )
           val group = Tests.Group(
             name = s"Test group $groupIdx",
